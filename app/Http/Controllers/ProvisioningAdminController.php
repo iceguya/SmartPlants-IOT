@@ -38,5 +38,20 @@ public function generate(Request $req)
     return redirect('/provisioning')->with('status','Token dibuat: '.$token->token);
 }
 
+    /**
+     * Delete a provisioning token by id.
+     */
+    public function destroy($id)
+    {
+        $token = ProvisioningToken::find($id);
+        if (!$token) {
+            return redirect('/provisioning')->with('status', 'Token not found.');
+        }
+
+        $token->delete();
+
+        return redirect('/provisioning')->with('status', 'Token dihapus: '.$id);
+    }
+
 }
 

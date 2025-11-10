@@ -48,6 +48,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rute ini tetap sama dan TIDAK DIUBAH, hanya dipindah ke dalam grup.
     Route::get('/provisioning', [ProvisioningAdminController::class, 'index'])
         ->name('provisioning.index');
+    // Endpoint untuk membuat token provisioning dari form web
+    Route::post('/provisioning/generate', [ProvisioningAdminController::class, 'generate'])
+        ->name('provisioning.generate');
+    // Hapus token provisioning
+    Route::delete('/provisioning/{id}', [ProvisioningAdminController::class, 'destroy'])
+        ->name('provisioning.destroy');
 
     // Rute Profile bawaan Breeze
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

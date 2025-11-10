@@ -25,6 +25,7 @@
           <th class="text-left p-2">Expires</th>
           <th class="text-left p-2">Claimed</th>
           <th class="text-left p-2">Claimed Device</th>
+          <th class="text-left p-2">Actions</th>
         </tr></thead>
         <tbody>
         @foreach ($tokens as $t)
@@ -34,6 +35,17 @@
             <td class="p-2">{{ $t->expires_at }}</td>
             <td class="p-2">{{ $t->claimed ? 'yes' : 'no' }}</td>
             <td class="p-2">{{ $t->claimed_device_id }}</td>
+            <td class="p-2">
+              @if (!$t->claimed)
+                <form method="POST" action="{{ route('provisioning.destroy', $t->id) }}" onsubmit="return confirm('Hapus token ini?');">
+                  @csrf
+                  @method('DELETE')
+                  <button class="px-2 py-1 text-sm text-red-600 border rounded hover:bg-red-50">Hapus</button>
+                </form>
+              @else
+                <span class="text-gray-500 text-sm">-</span>
+              @endif
+            </td>
           </tr>
         @endforeach
         </tbody>
