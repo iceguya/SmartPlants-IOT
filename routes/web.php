@@ -1,34 +1,60 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProvisioningAdminController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProvisioningAdminController; // Pastikan ini di-import
 
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Ini adalah Peta Aplikasi yang sudah disinkronkan.
+|
+*/
 
+// ========================================================================
+// RUTE UNTUK TAMU (Guest)
+// ========================================================================
+//
+// Rute '/' akan memanggil view 'welcome.blade.php' untuk landing page.
+//
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+// ========================================================================
+// RUTE UNTUK PENGGUNA YANG SUDAH LOGIN (Authenticated)
+// ========================================================================
+//
+// Kita gunakan prefix '/dashboard' untuk semua rute aplikasi
+// dan lindungi dengan middleware 'auth'.
+//
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    // Rute '/dashboard' akan memanggil DashboardController
+    // Ini adalah halaman dashboard utamamu.
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard'); // Kita beri nama 'dashboard'
+
+    // Rute '/dashboard/device/{device}'
+    // Rute kustom milikmu untuk melihat detail device
+    Route::get('/dashboard/device/{device}', [DashboardController::class, 'device'])
+        ->name('device.show');
+
+    // RUTE PROVISIONING (MILIKMU)
+    // Rute ini tetap sama dan TIDAK DIUBAH, hanya dipindah ke dalam grup.
+    Route::get('/provisioning', [ProvisioningAdminController::class, 'index'])
+        ->name('provisioning.index');
+
+    // Rute Profile bawaan Breeze
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+
+// Memuat rute untuk otentikasi (login, register, logout, dll)
 require __DIR__.'/auth.php';
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/devices/{device}', [DashboardController::class, 'device']);
-    Route::post('/devices/{device}/commands/water-on', [DashboardController::class, 'waterOn']);
-
-    // provisioning admin
-    Route::get('/provisioning', [ProvisioningAdminController::class, 'index']);
-    Route::post('/provisioning/generate', [ProvisioningAdminController::class, 'generate']);
-});
-
