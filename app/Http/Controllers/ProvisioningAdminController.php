@@ -14,26 +14,29 @@ class ProvisioningAdminController extends Controller
         return view('provisioning.index', compact('tokens'));
     }
 
-    public function generate(Request $req)
-    {
-        $data = $req->validate([
-            'planned_device_id'=>'nullable|string',
-            'name_hint'=>'nullable|string',
-            'location_hint'=>'nullable|string',
-            'ttl_hours'=>'nullable|integer|min:1|max:168',
-        ]);
-        $ttl = $data['ttl_hours'] ?? 12;
+public function generate(Request $req)
+{
+    $data = $req->validate([
+        'planned_device_id' => 'nullable|string',
+        'name_hint'         => 'nullable|string',
+        'location_hint'     => 'nullable|string',
+        'ttl_hours'         => 'nullable|integer|min:1|max:168',
+    ]);
 
-        $token = ProvisioningToken::create([
-            'token' => Str::random(36),
-            'planned_device_id' => $data['planned_device_id'] ?? null,
-            'name_hint' => $data['name_hint'] ?? null,
-            'location_hint' => $data['location_hint'] ?? null,
-            'expires_at' => now()->addHours($ttl),
-            'claimed' => false,
-        ]);
+    // pastikan int; jika tidak ada set default 12
+    $ttl = isset($data['ttl_hours']) ? (int) $data['ttl_hours'] : 12;
 
-        return redirect('/provisioning')->with('status','Token dibuat: '.$token->token);
-    }
+    $token = ProvisioningToken::create([
+        'token'             => Str::random(36),
+        'planned_device_id' => $data['planned_device_id'] ?? null,
+        'name_hint'         => $data['name_hint'] ?? null,
+        'location_hint'     => $data['location_hint'] ?? null,
+        'expires_at'        => now()->addHours($ttl),
+        'claimed'           => false,
+    ]);
+
+    return redirect('/provisioning')->with('status','Token dibuat: '.$token->token);
+}
+
 }
 
