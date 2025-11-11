@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\AutomationService;
 
 class DeviceIngestController extends Controller
 {
@@ -37,6 +38,9 @@ class DeviceIngestController extends Controller
     }
 
     $device->update(['last_seen'=>now(),'status'=>'online']);
+
+    // Check automation rules after sensor data is received
+    app(AutomationService::class)->checkAndTriggerRules($device);
 
     return response()->json(['message'=>'OK']);
 }

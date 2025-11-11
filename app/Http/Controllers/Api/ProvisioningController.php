@@ -30,6 +30,7 @@ class ProvisioningController extends Controller
             'location' => $data['location'] ?? $pt->location_hint,
             'api_key' => Str::random(40),
             'status' => 'offline',
+            'user_id' => $pt->user_id, // Assign device to the token owner
         ]);
 
         // siapkan sensors default sesuai kebutuhan

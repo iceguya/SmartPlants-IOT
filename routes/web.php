@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProvisioningAdminController; // Pastikan ini di-import
+use App\Http\Controllers\AutomationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +48,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rute untuk water command
     Route::post('/devices/{device}/commands/water-on', [DashboardController::class, 'waterOn'])
         ->name('device.water');
+
+    // AUTOMATION RULES
+    Route::get('/devices/{device}/automation', [AutomationController::class, 'index'])
+        ->name('device.automation');
+    Route::post('/devices/{device}/automation', [AutomationController::class, 'store'])
+        ->name('device.automation.store');
+    Route::post('/devices/{device}/automation/{rule}/toggle', [AutomationController::class, 'toggle'])
+        ->name('device.automation.toggle');
+    Route::delete('/devices/{device}/automation/{rule}', [AutomationController::class, 'destroy'])
+        ->name('device.automation.destroy');
 
     // RUTE PROVISIONING (MILIKMU)
     // Rute ini tetap sama dan TIDAK DIUBAH, hanya dipindah ke dalam grup.

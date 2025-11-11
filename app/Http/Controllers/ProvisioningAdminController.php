@@ -10,7 +10,10 @@ class ProvisioningAdminController extends Controller
 {
     public function index()
     {
-        $tokens = ProvisioningToken::orderByDesc('id')->limit(20)->get();
+        $tokens = ProvisioningToken::where('user_id', auth()->id())
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
         return view('provisioning.index', compact('tokens'));
     }
 
@@ -33,6 +36,7 @@ public function generate(Request $req)
         'location_hint'     => $data['location_hint'] ?? null,
         'expires_at'        => now()->addHours($ttl),
         'claimed'           => false,
+        'user_id'           => auth()->id(),
     ]);
 
     return redirect('/provisioning')->with('status','Token dibuat: '.$token->token);
@@ -44,9 +48,11 @@ public function generate(Request $req)
      */
     public function destroy($id)
     {
-        $token = ProvisioningToken::find($id);
+        $token = ProvisioningToken::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->first();
         if (!$token) {
-            return redirect('/provisioning')->with('status', 'Token not found.');
+            return redirect('/provisioning')->with('status', 'Token not found or unauthorized.');
         }
 
         $message = 'Token dihapus: '.$token->token;

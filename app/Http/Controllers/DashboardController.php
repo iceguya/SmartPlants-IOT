@@ -11,7 +11,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $devices = Device::withCount('sensors')->orderBy('name')->get();
+        $devices = Device::where('user_id', auth()->id())
+            ->withCount('sensors')
+            ->orderBy('name')
+            ->get();
         
         // Update status berdasarkan last_seen (jika > 5 menit = offline)
         foreach ($devices as $device) {
@@ -37,17 +40,23 @@ class DashboardController extends Controller
             'soil_moisture' => ['avg' => 0],
         ];
         
-        // Ambil rata-rata dari semua sensor terbaru (24 jam terakhir)
+        // Ambil rata-rata dari semua sensor terbaru (24 jam terakhir) untuk user ini
         $tempReadings = \App\Models\SensorReading::whereHas('sensor', function($q) {
-            $q->where('type', 'temp');
+            $q->where('type', 'temp')->whereHas('device', function($qq) {
+                $qq->where('user_id', auth()->id());
+            });
         })->where('recorded_at', '>=', now()->subHours(24))->avg('value');
         
         $humReadings = \App\Models\SensorReading::whereHas('sensor', function($q) {
-            $q->where('type', 'hum');
+            $q->where('type', 'hum')->whereHas('device', function($qq) {
+                $qq->where('user_id', auth()->id());
+            });
         })->where('recorded_at', '>=', now()->subHours(24))->avg('value');
         
         $soilReadings = \App\Models\SensorReading::whereHas('sensor', function($q) {
-            $q->where('type', 'soil');
+            $q->where('type', 'soil')->whereHas('device', function($qq) {
+                $qq->where('user_id', auth()->id());
+            });
         })->where('recorded_at', '>=', now()->subHours(24))->avg('value');
         
         $analytics['temperature']['avg'] = $tempReadings ? round($tempReadings, 1) : '--';
@@ -59,6 +68,11 @@ class DashboardController extends Controller
 
     public function device(Device $device)
     {
+        // Pastikan device milik user yang sedang login
+        if ($device->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to device');
+        }
+
         // Update status real-time
         if ($device->last_seen) {
             $isOnline = $device->last_seen->diffInMinutes(now()) < 5;
@@ -81,6 +95,11 @@ class DashboardController extends Controller
 
     public function waterOn(Device $device, Request $req)
     {
+        // Pastikan device milik user yang sedang login
+        if ($device->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to device');
+        }
+
         $dur = (int)($req->input('duration_sec',5));
         Command::create([
             'device_id'=>$device->id,
