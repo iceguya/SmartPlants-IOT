@@ -145,20 +145,7 @@
               }
             });
 
-            setInterval(async () => {
-              const res = await fetch('{{ url('/api/sensor-latest?sensor_id='.$s->id) }}');
-              if (!res.ok) return;
-              const j = await res.json();
-              if (j && j.value !== undefined) {
-                data{{ $s->id }}.labels.push(j.time);
-                data{{ $s->id }}.datasets[0].data.push(j.value);
-                if (data{{ $s->id }}.labels.length > 50) {
-                  data{{ $s->id }}.labels.shift();
-                  data{{ $s->id }}.datasets[0].data.shift();
-                }
-                chart{{ $s->id }}.update();
-              }
-            }, 10000);
+            // Chart will be updated by global polling mechanism below
           </script>
 
           <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
@@ -178,9 +165,66 @@
       </div>
 
       <script>
-        // Auto refresh untuk update status dan analytics saat data baru masuk
-        let lastUpdateTime = Date.now();
+        // Smart auto-refresh: only poll if device is online
         const deviceId = '{{ $device->id }}';
+        const deviceStatus = '{{ $device->status }}';
+        let pollInterval = null;
+        
+        // Start polling only if device is online
+        if (deviceStatus === 'online') {
+          startPolling();
+        }
+        
+        function startPolling() {
+          // Single polling mechanism untuk update semua sensor sekaligus
+          pollInterval = setInterval(async () => {
+            try {
+              // Check each sensor for updates
+              @foreach($device->sensors as $s)
+              await updateSensor{{ $s->id }}();
+              @endforeach
+            } catch (error) {
+              console.error('Polling error:', error);
+            }
+          }, 30000); // Poll setiap 30 detik (bukan 5-10 detik)
+        }
+        
+        function stopPolling() {
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        }
+        
+        // Update functions untuk tiap sensor
+        @foreach($device->sensors as $s)
+        async function updateSensor{{ $s->id }}() {
+          try {
+            const res = await fetch('{{ url('/api/sensor-latest?sensor_id='.$s->id) }}');
+            if (!res.ok) return;
+            const data = await res.json();
+            
+            if (data && data.value !== undefined) {
+              // Update chart
+              data{{ $s->id }}.labels.push(data.time);
+              data{{ $s->id }}.datasets[0].data.push(data.value);
+              if (data{{ $s->id }}.labels.length > 50) {
+                data{{ $s->id }}.labels.shift();
+                data{{ $s->id }}.datasets[0].data.shift();
+              }
+              chart{{ $s->id }}.update();
+              
+              // Update display values
+              const lastEl = document.getElementById('last-{{ $s->id }}');
+              const lastTimeEl = document.getElementById('last-time-{{ $s->id }}');
+              if (lastEl) lastEl.innerHTML = data.value + ' <span class="text-sm font-normal text-gray-500">{{ $s->unit }}</span>';
+              if (lastTimeEl) lastTimeEl.textContent = data.time;
+            }
+          } catch (error) {
+            console.error('Error updating sensor {{ $s->id }}:', error);
+          }
+        }
+        @endforeach
         
         // Handle water form submission
         document.getElementById('water-form').addEventListener('submit', async function(e) {
@@ -240,66 +284,20 @@
           setTimeout(() => div.remove(), 5000);
         }
         
-        // Polling untuk auto refresh status dan analytics
-        setInterval(async () => {
-          try {
-            // Fetch latest analytics data
-            const response = await fetch(window.location.href, {
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-              }
-            });
-            
-            if (!response.ok) return;
-            
-            // Check if there's new data by comparing timestamps
-            const hasNewData = await checkNewData();
-            
-            if (hasNewData) {
-              // Reload page untuk refresh semua data
-              location.reload();
-            }
-          } catch (error) {
-            console.error('Error checking for updates:', error);
-          }
-        }, 5000); // Check setiap 5 detik
+        // Full page reload setiap 5 menit untuk update analytics dan device status
+        setTimeout(() => location.reload(), 300000); // 5 menit
         
-        // Check if there's new sensor data
-        async function checkNewData() {
-          @foreach($device->sensors as $s)
-          try {
-            const res{{ $s->id }} = await fetch('{{ url('/api/sensor-latest?sensor_id='.$s->id) }}');
-            if (!res{{ $s->id }}.ok) return false;
-            const j{{ $s->id }} = await res{{ $s->id }}.json();
-            
-            if (j{{ $s->id }} && j{{ $s->id }}.value !== undefined) {
-              const currentLastValue = parseFloat(document.querySelector('#last-{{ $s->id }}').textContent);
-              if (!isNaN(currentLastValue) && currentLastValue !== j{{ $s->id }}.value) {
-                return true; // Ada data baru
-              }
-            }
-          } catch (e) {
-            console.error('Error checking sensor {{ $s->id }}:', e);
-          }
-          @endforeach
-          return false;
-        }
-      </script>
-
-      <script>
-        // Refresh penuh setiap 2 menit untuk update analytics dan alerts
-        setTimeout(() => location.reload(), 120000);
+        // Indikator countdown
+        const indicator = document.createElement('div');
+        indicator.className = 'fixed bottom-4 left-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-xs z-50';
+        indicator.innerHTML = '<span>🔄 Reload <span id="countdown">300</span>s | Poll: ' + (deviceStatus === 'online' ? '✅ 30s' : '❌ OFF') + '</span>';
+        document.body.appendChild(indicator);
         
-        // Indikator
-        const ind3 = document.createElement('div');
-        ind3.className = 'fixed bottom-4 left-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-xs z-50';
-        ind3.innerHTML = '<span>Full refresh <span id="cd3">120</span>s</span>';
-        document.body.appendChild(ind3);
-        let lr3 = Date.now();
+        let startTime = Date.now();
         setInterval(() => {
-          const r = 120 - Math.floor((Date.now() - lr3) / 1000);
-          const c = document.getElementById('cd3');
-          if (c) c.textContent = r > 0 ? r : 120;
+          const remaining = 300 - Math.floor((Date.now() - startTime) / 1000);
+          const countdownEl = document.getElementById('countdown');
+          if (countdownEl) countdownEl.textContent = remaining > 0 ? remaining : 300;
         }, 1000);
       </script>
 

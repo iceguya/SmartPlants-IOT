@@ -5,108 +5,102 @@ namespace App\Services;
 use App\Models\Device;
 use App\Models\Command;
 use App\Models\AutomationRule;
-use App\Models\SensorReading;
+use Illuminate\Support\Facades\Log;
 
 class AutomationService
 {
+    private const SENSOR_READING_WINDOW_MINUTES = 5;
+
     /**
      * Check and trigger automation rules for a device
-     * Called after new sensor data is received
      */
-    public function checkAndTriggerRules(Device $device)
+    public function checkAndTriggerRules(Device $device): void
     {
-        $rules = $device->automationRules()->where('enabled', true)->get();
-        
-        foreach ($rules as $rule) {
-            if (!$rule->canTrigger()) {
-                continue; // Still in cooldown period
-            }
-
-            $shouldTrigger = $this->evaluateCondition($device, $rule);
-            
-            if ($shouldTrigger) {
-                $this->triggerAction($device, $rule);
-                $rule->update(['last_triggered_at' => now()]);
-            }
-        }
+        $device->automationRules()
+            ->where('enabled', true)
+            ->get()
+            ->filter(fn($rule) => $rule->canTrigger())
+            ->filter(fn($rule) => $this->evaluateCondition($device, $rule))
+            ->each(fn($rule) => $this->executeRule($device, $rule));
     }
 
     /**
      * Evaluate if rule condition is met
      */
-    private function evaluateCondition(Device $device, AutomationRule $rule)
+    private function evaluateCondition(Device $device, AutomationRule $rule): bool
     {
-        switch ($rule->condition_type) {
-            case 'soil_low':
-                return $this->checkSensorValue($device, 'soil', '<', $rule->threshold_value);
-            
-            case 'soil_high':
-                return $this->checkSensorValue($device, 'soil', '>', $rule->threshold_value);
-            
-            case 'temp_high':
-                return $this->checkSensorValue($device, 'temp', '>', $rule->threshold_value);
-            
-            case 'temp_low':
-                return $this->checkSensorValue($device, 'temp', '<', $rule->threshold_value);
-            
-            case 'hum_low':
-                return $this->checkSensorValue($device, 'hum', '<', $rule->threshold_value);
-            
-            case 'hum_high':
-                return $this->checkSensorValue($device, 'hum', '>', $rule->threshold_value);
-            
-            default:
-                return false;
+        [$sensorType, $operator] = $this->parseConditionType($rule->condition_type);
+        
+        if (!$sensorType) {
+            return false;
         }
+
+        return $this->checkSensorValue($device, $sensorType, $operator, $rule->threshold_value);
+    }
+
+    /**
+     * Parse condition type into sensor type and operator
+     */
+    private function parseConditionType(string $conditionType): array
+    {
+        $conditions = [
+            'soil_low' => ['soil', '<'],
+            'soil_high' => ['soil', '>'],
+            'temp_low' => ['temp', '<'],
+            'temp_high' => ['temp', '>'],
+            'hum_low' => ['hum', '<'],
+            'hum_high' => ['hum', '>'],
+        ];
+
+        return $conditions[$conditionType] ?? [null, null];
     }
 
     /**
      * Check latest sensor reading value
      */
-    private function checkSensorValue(Device $device, string $sensorType, string $operator, float $threshold)
+    private function checkSensorValue(Device $device, string $sensorType, string $operator, float $threshold): bool
     {
-        $sensor = $device->sensors()->where('type', $sensorType)->first();
-        if (!$sensor) return false;
+        $latestValue = $device->sensors()
+            ->where('type', $sensorType)
+            ->first()
+            ?->readings()
+            ->where('recorded_at', '>=', now()->subMinutes(self::SENSOR_READING_WINDOW_MINUTES))
+            ->latest('recorded_at')
+            ->value('value');
 
-        $latestReading = $sensor->readings()
-            ->where('recorded_at', '>=', now()->subMinutes(5))
-            ->orderBy('recorded_at', 'desc')
-            ->first();
-
-        if (!$latestReading) return false;
-
-        switch ($operator) {
-            case '<':
-                return $latestReading->value < $threshold;
-            case '>':
-                return $latestReading->value > $threshold;
-            case '<=':
-                return $latestReading->value <= $threshold;
-            case '>=':
-                return $latestReading->value >= $threshold;
-            case '==':
-                return $latestReading->value == $threshold;
-            default:
-                return false;
+        if ($latestValue === null) {
+            return false;
         }
+
+        return match($operator) {
+            '<' => $latestValue < $threshold,
+            '>' => $latestValue > $threshold,
+            '<=' => $latestValue <= $threshold,
+            '>=' => $latestValue >= $threshold,
+            '==' => $latestValue == $threshold,
+            default => false,
+        };
     }
 
     /**
-     * Execute the automation action
+     * Execute the automation rule
      */
-    private function triggerAction(Device $device, AutomationRule $rule)
+    private function executeRule(Device $device, AutomationRule $rule): void
     {
-        switch ($rule->action) {
-            case 'water_on':
-                Command::create([
-                    'device_id' => $device->id,
-                    'command' => 'water_on',
-                    'params' => ['duration_sec' => $rule->action_duration],
-                    'status' => 'pending',
-                ]);
-                
-                \Log::info("Automation triggered: water_on for {$device->name} ({$rule->condition_type} = {$rule->threshold_value})");
-                break;
-        }
+        Command::create([
+            'device_id' => $device->id,
+            'command' => $rule->action,
+            'params' => ['duration_sec' => $rule->action_duration],
+            'status' => 'pending',
+        ]);
+
+        $rule->update(['last_triggered_at' => now()]);
+
+        Log::info("Automation triggered", [
+            'device' => $device->name,
+            'rule' => $rule->condition_type,
+            'threshold' => $rule->threshold_value,
+            'action' => $rule->action,
+        ]);
     }
 }

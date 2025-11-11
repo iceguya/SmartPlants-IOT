@@ -2,43 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Device;
 use App\Models\AutomationRule;
+use App\Traits\HasDeviceAuthorization;
+use App\Http\Requests\AutomationRuleRequest;
 
 class AutomationController extends Controller
 {
+    use HasDeviceAuthorization;
+
     public function index(Device $device)
     {
-        // Ensure device belongs to authenticated user
-        if ($device->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized access to device');
-        }
+        $this->authorizeDevice($device);
 
-        $rules = $device->automationRules()->get();
+        $rules = $device->automationRules()->orderBy('created_at', 'desc')->get();
+        
         return view('automation.index', compact('device', 'rules'));
     }
 
-    public function store(Request $request, Device $device)
+    public function store(AutomationRuleRequest $request, Device $device)
     {
-        if ($device->user_id !== auth()->id()) {
-            abort(403);
-        }
-
-        $data = $request->validate([
-            'condition_type' => 'required|in:soil_low,soil_high,temp_low,temp_high,hum_low,hum_high',
-            'threshold_value' => 'required|numeric|min:0|max:100',
-            'action_duration' => 'required|integer|min:1|max:60',
-            'cooldown_minutes' => 'required|integer|min:5|max:1440',
-        ]);
+        $this->authorizeDevice($device);
 
         $device->automationRules()->create([
+            ...$request->validated(),
             'enabled' => true,
-            'condition_type' => $data['condition_type'],
-            'threshold_value' => $data['threshold_value'],
             'action' => 'water_on',
-            'action_duration' => $data['action_duration'],
-            'cooldown_minutes' => $data['cooldown_minutes'],
         ]);
 
         return back()->with('status', 'Automation rule created successfully!');
@@ -46,22 +35,32 @@ class AutomationController extends Controller
 
     public function toggle(Device $device, AutomationRule $rule)
     {
-        if ($device->user_id !== auth()->id() || $rule->device_id !== $device->id) {
-            abort(403);
-        }
+        $this->authorizeDeviceAndRule($device, $rule);
 
         $rule->update(['enabled' => !$rule->enabled]);
+        
         return back()->with('status', $rule->enabled ? 'Rule enabled' : 'Rule disabled');
     }
 
     public function destroy(Device $device, AutomationRule $rule)
     {
-        if ($device->user_id !== auth()->id() || $rule->device_id !== $device->id) {
-            abort(403);
-        }
+        $this->authorizeDeviceAndRule($device, $rule);
 
         $rule->delete();
+        
         return back()->with('status', 'Automation rule deleted');
+    }
+
+    /**
+     * Authorize device and rule ownership
+     */
+    private function authorizeDeviceAndRule(Device $device, AutomationRule $rule): void
+    {
+        $this->authorizeDevice($device);
+
+        if ($rule->device_id !== $device->id) {
+            abort(403, 'Rule does not belong to this device');
+        }
     }
 }
 

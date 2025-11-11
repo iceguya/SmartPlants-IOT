@@ -14,16 +14,31 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
-            <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
+    <body class="font-sans antialiased">
+        <div class="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-md">
+                <!-- Logo & Brand -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl shadow-lg mb-4">
+                        <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-900">SmartPlants</h1>
+                    <p class="text-gray-600 mt-2">IoT Plant Monitoring System</p>
+                </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                <!-- Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                    {{ $slot }}
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center mt-6">
+                    <p class="text-sm text-gray-500">
+                        © {{ date('Y') }} SmartPlants. Smart Agriculture Technology.
+                    </p>
+                </div>
             </div>
         </div>
     </body>
