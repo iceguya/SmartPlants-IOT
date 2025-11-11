@@ -8,7 +8,7 @@ export default defineConfig({
     strictPort: false,
     hmr: {
       protocol: 'ws',   // websocket untuk HMR
-      host: '192.168.137.1', // ganti dengan IP mesin yang dipakai (lihat screenshot)
+      host: '192.168.43.206', // ganti dengan IP mesin yang dipakai (lihat screenshot)
       port: 5173,
     },
   },
