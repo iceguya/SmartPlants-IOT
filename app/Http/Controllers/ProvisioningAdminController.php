@@ -33,7 +33,7 @@ class ProvisioningAdminController extends Controller
             'planned_device_id' => $validated['planned_device_id'] ?? null,
             'name_hint' => $validated['name_hint'] ?? null,
             'location_hint' => $validated['location_hint'] ?? null,
-            'expires_at' => now()->addHours($validated['ttl_hours'] ?? 12),
+            'expires_at' => now()->addHours((int)($validated['ttl_hours'] ?? 12)),
             'claimed' => false,
             'user_id' => auth()->id(),
         ]);
