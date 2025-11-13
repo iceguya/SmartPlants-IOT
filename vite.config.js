@@ -54,6 +54,7 @@ export default defineConfig({
       host: localIP,
       port: 5173,
     },
+    cors: true,
   },
   plugins: [
     laravel({
