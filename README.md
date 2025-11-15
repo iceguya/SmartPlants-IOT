@@ -190,7 +190,7 @@ Aplikasi akan berjalan di `http://localhost:8000`
    - ESP8266HTTPClient
    - ArduinoJson (via Library Manager)
 
-2. **Edit File `ESP8266_SmartPlants.ino`**:
+2. **Edit File `esp8266/ESP8266_SmartPlants.ino`**:
 
 ```cpp
 // Ganti dengan kredensial WiFi Anda
@@ -445,26 +445,56 @@ php artisan test --filter=ProvisioningTest
 
 ```
 SmartPlants-IOT/
-├── app/
-│   ├── Http/Controllers/
-│   │   ├── Api/                    # API Controllers
-│   │   ├── DashboardController.php # Dashboard utama
-│   │   ├── AutomationController.php# Automation rules
-│   │   └── ProvisioningAdminController.php
+├── app/                            # Laravel application code
+│   ├── Console/                    # CLI commands & scheduler
+│   ├── Http/
+│   │   ├── Controllers/            # Request handlers
+│   │   │   ├── Api/                # API endpoints for ESP8266
+│   │   │   ├── DashboardController.php
+│   │   │   ├── AutomationController.php
+│   │   │   └── ProvisioningAdminController.php
+│   │   ├── Middleware/             # HTTP filters
+│   │   └── Requests/               # Form validation
 │   ├── Models/                     # Eloquent models
-│   └── Middleware/
+│   ├── Providers/                  # Service providers
+│   ├── Services/                   # Business logic layer
+│   ├── Traits/                     # Reusable code snippets
+│   └── View/                       # Blade components
 ├── database/
-│   ├── migrations/                 # Database migrations
-│   └── seeders/
+│   ├── migrations/                 # Database schema
+│   └── seeders/                    # Sample data
 ├── resources/
 │   ├── views/                      # Blade templates
-│   └── js/
+│   ├── css/                        # Tailwind CSS
+│   └── js/                         # Frontend JavaScript
 ├── routes/
 │   ├── web.php                     # Web routes
-│   └── api.php                     # API routes
-├── ESP8266_SmartPlants.ino         # Main ESP8266 code
-├── esp8266_full_automation.ino     # Full automation version
-└── composer.json
+│   └── api.php                     # API routes for ESP8266
+├── docs/                           # 📚 Documentation
+│   ├── DROPDOWN-FIX.md
+│   └── ESP8266_README.md
+├── esp8266/                        # 🔌 Arduino firmware
+│   ├── ESP8266_SmartPlants.ino     # Main ESP8266 code
+│   ├── esp8266_full_automation.ino # Full automation version
+│   └── README.md
+├── scripts/                        # 🛠️ Helper scripts
+│   ├── dev.bat                     # Development server
+│   ├── fix-dropdown.bat            # Fix dropdown bug
+│   └── README.md
+├── tests/
+│   ├── Feature/                    # Feature tests
+│   ├── Unit/                       # Unit tests
+│   └── manual/                     # 🧪 Manual test scripts
+│       ├── test_ingest.php
+│       ├── test_provision.php
+│       ├── check_devices.php
+│       └── README.md
+├── .env.example                    # Environment template
+├── composer.json                   # PHP dependencies
+├── package.json                    # Node dependencies
+├── nixpacks.toml                   # Deployment config (Railway)
+├── Caddyfile                       # Caddy webserver config
+└── README.md                       # This file
 ```
 
 ## 🤝 Kontribusi
@@ -499,7 +529,7 @@ Proyek ini menggunakan lisensi MIT. Lihat file `LICENSE` untuk detail.
 Jika Anda mengalami masalah atau memiliki pertanyaan:
 
 1. Buka [Issues](https://github.com/kurokana/SmartPlants-IOT/issues)
-2. Cek dokumentasi ESP8266: [ESP8266_README.md](ESP8266_README.md)
+2. Cek dokumentasi ESP8266: [docs/ESP8266_README.md](docs/ESP8266_README.md)
 3. Periksa troubleshooting guide di atas
 
 ---
