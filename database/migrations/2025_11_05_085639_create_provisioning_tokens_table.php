@@ -13,6 +13,7 @@ public function up(): void
 {
     Schema::create('provisioning_tokens', function (Blueprint $t) {
         $t->id();
+        $t->foreignId('user_id')->constrained()->onDelete('cascade');
         $t->string('token', 64)->unique();   // kode klaim, misal 32-40 char
         $t->string('planned_device_id')->nullable(); // boleh diisi dulu, opsional
         $t->string('name_hint')->nullable(); // hint nama device
@@ -24,6 +25,7 @@ public function up(): void
         $t->timestamps();
 
         $t->index(['claimed','expires_at']);
+        $t->index('user_id');
     });
 }
 

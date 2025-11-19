@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ProvisioningAdminController; // Pastikan ini di-import
+use App\Http\Controllers\ProvisioningAdminController;
 use App\Http\Controllers\AutomationController;
+use App\Http\Controllers\SensorController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rute '/dashboard' akan memanggil DashboardController
     // Ini adalah halaman dashboard utamamu.
     Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->name('dashboard'); // Kita beri nama 'dashboard'
+        ->name('dashboard');
 
     // Rute '/dashboard/device/{device}'
     // Rute kustom milikmu untuk melihat detail device
@@ -48,6 +50,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Rute untuk water command
     Route::post('/devices/{device}/commands/water-on', [DashboardController::class, 'waterOn'])
         ->name('device.water');
+
+    // SENSOR MONITORING PAGES
+    Route::prefix('sensors')->name('sensors.')->group(function () {
+        Route::get('/environment', [SensorController::class, 'environment'])
+            ->name('environment');
+        Route::get('/soil', [SensorController::class, 'soil'])
+            ->name('soil');
+        Route::get('/health', [SensorController::class, 'health'])
+            ->name('health');
+    });
+
+    // NOTIFICATION SYSTEM
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/unread', [NotificationController::class, 'unread'])
+            ->name('unread');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+            ->name('mark-all-read');
+        Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead'])
+            ->name('mark-read');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])
+            ->name('destroy');
+    });
 
     // AUTOMATION RULES
     Route::get('/devices/{device}/automation', [AutomationController::class, 'index'])
