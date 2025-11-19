@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('provisioning_tokens', function (Blueprint $table) {
-            $table->foreignId('user_id')->nullable()->after('id')->constrained()->onDelete('cascade');
+            // Cek apakah kolom user_id SUDAH ADA?
+            if (!Schema::hasColumn('provisioning_tokens', 'user_id')) {
+                // Jika BELUM ada, baru tambahkan
+                $table->foreignId('user_id')->nullable()->after('id')->constrained()->nullOnDelete();
+            }
         });
     }
 
@@ -22,8 +26,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('provisioning_tokens', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropColumn('user_id');
+            if (Schema::hasColumn('provisioning_tokens', 'user_id')) {
+                $table->dropForeign(['user_id']);
+                $table->dropColumn('user_id');
+            }
         });
     }
 };
