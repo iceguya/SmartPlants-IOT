@@ -1,34 +1,18 @@
-/*
- * SmartPlants ESP8266 - HTTPS Version for AlwaysData.net
- * 
- * CHANGES FROM HTTP VERSION:
- * - Uses WiFiClientSecure for HTTPS
- * - Disable SSL certificate verification (setInsecure)
- * - Compatible with alwaysdata.net HTTPS
- * 
- * Dependencies:
- * - ESP8266WiFi
- * - ESP8266HTTPClient
- * - ArduinoJson (install via Library Manager)
- */
-
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClientSecure.h>  // For HTTPS
+#include <WiFiClientSecure.h>  
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 
 // ===== KONFIGURASI WiFi =====
-const char* ssid = "pedal";          // GANTI dengan WiFi Anda
-const char* password = "12345689";   // GANTI dengan password WiFi
+const char* ssid = "pedal";          
+const char* password = "12345689";   
 
 // ===== KONFIGURASI SERVER (HTTPS) =====
-const char* serverUrl = "https://kurokana.alwaysdata.net";  // URL HTTPS AlwaysData
+const char* serverUrl = "https://kurokana.alwaysdata.net";  
 
 // ===== PROVISIONING TOKEN =====
-// Dapatkan dari dashboard: https://kurokana.alwaysdata.net/provisioning
-const char* provisionToken = "zsDX4SgsW80UHzgJONXVn7m2gpPT347bDmoL"; // GANTI dengan token dari web
-
+const char* provisionToken = "zsDX4SgsW80UHzgJONXVn7m2gpPT347bDmoL"; 
 // ===== STORAGE CREDENTIALS =====
 struct Credentials {
   char magic[4];      // "SPLT" marker
@@ -88,15 +72,15 @@ void clearCredentials() {
 bool doProvisioning() {
   Serial.println("🔧 Starting provisioning (HTTPS)...");
   
-  WiFiClientSecure client;  // HTTPS client
-  client.setInsecure();      // Skip SSL certificate verification
+  WiFiClientSecure client;  
+  client.setInsecure();      
   
   HTTPClient http;
   
   String chipId = String(ESP.getChipId());
   String url = String(serverUrl) + "/api/provision/claim";
   
-  http.begin(client, url);  // Use secure client
+  http.begin(client, url);  
   http.addHeader("Content-Type", "application/json");
   
   DynamicJsonDocument doc(256);
@@ -144,19 +128,18 @@ bool doProvisioning() {
 
 // ===== KIRIM DATA SENSOR WITH HTTPS =====
 bool sendSensorData(float soil, float temp, float hum, float r, float g, float b) {
-  WiFiClientSecure client;  // HTTPS client
-  client.setInsecure();      // Skip SSL certificate verification
+  WiFiClientSecure client;  
+  client.setInsecure();      
   
   HTTPClient http;
   
   String url = String(serverUrl) + "/api/ingest";
   
-  http.begin(client, url);  // Use secure client
+  http.begin(client, url);  
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Id", String(creds.deviceId));
   http.addHeader("X-Api-Key", String(creds.apiKey));
   
-  // Buat JSON payload
   DynamicJsonDocument doc(512);
   JsonArray readings = doc.createNestedArray("readings");
   
@@ -209,7 +192,6 @@ bool sendSensorData(float soil, float temp, float hum, float r, float g, float b
 
 // ===== DUMMY SENSOR READING =====
 void readSensors(float &soil, float &temp, float &hum, float &r, float &g, float &b) {
-  // Generate random sensor data untuk testing
   soil = random(0, 100) + random(0, 100) / 100.0;
   temp = random(20, 35) + random(0, 100) / 100.0;
   hum = random(40, 80) + random(0, 100) / 100.0;

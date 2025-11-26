@@ -1,11 +1,3 @@
-/*
- * SmartPlants ESP8266 - Full Automation Version
- * Features:
- * - Real sensors: DHT22, Soil Moisture, TCS3200
- * - Relay control for water pump
- * - Polling commands from server
- * - Auto-execute water_on commands
- */
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -202,6 +194,8 @@ void executeWaterOn(int durationSec) {
 }
 
 void checkCommands() {
+  Serial.println("🔍 Checking for commands...");
+  
   WiFiClient client;
   HTTPClient http;
   String url = String(serverUrl) + "/api/commands/next";
@@ -211,41 +205,57 @@ void checkCommands() {
   http.addHeader("X-Api-Key", String(creds.apiKey));
 
   int code = http.GET();
+  Serial.printf("📡 Command check response: %d\n", code);
   
   if (code == 200) {
     String response = http.getString();
-    DynamicJsonDocument doc(512);
+    Serial.println("📥 Response: " + response);
     
-    if (!deserializeJson(doc, response)) {
-      if (doc["command"].isNull()) {
-        // No pending commands
-        http.end();
-        return;
-      }
-
-      int cmdId = doc["id"];
-      String command = doc["command"].as<String>();
-      JsonObject params = doc["params"];
-
-      Serial.printf("📥 Command received: %s (ID: %d)\n", command.c_str(), cmdId);
-
-      if (command == "water_on") {
-        int duration = params["duration_sec"] | 5; // Default 5 detik
-        executeWaterOn(duration);
-        
-        // Send ACK
-        http.end();
-        HTTPClient httpAck;
-        String ackUrl = String(serverUrl) + "/api/commands/" + String(cmdId) + "/ack";
-        httpAck.begin(client, ackUrl);
-        httpAck.addHeader("X-Device-Id", String(creds.deviceId));
-        httpAck.addHeader("X-Api-Key", String(creds.apiKey));
-        httpAck.POST("");
-        httpAck.end();
-        
-        Serial.println("✅ Command ACK sent");
-      }
+    DynamicJsonDocument doc(512);
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (error) {
+      Serial.println("❌ JSON parse error: " + String(error.c_str()));
+      http.end();
+      return;
     }
+    
+    if (doc["command"].isNull()) {
+      Serial.println("⏸️ No pending commands");
+      http.end();
+      return;
+    }
+
+    int cmdId = doc["id"];
+    String command = doc["command"].as<String>();
+    JsonObject params = doc["params"];
+
+    Serial.printf("📥 Command received: %s (ID: %d)\n", command.c_str(), cmdId);
+
+    if (command == "water_on") {
+      int duration = params["duration_sec"] | 5; // Default 5 detik
+      Serial.printf("💧 Executing water_on for %d seconds...\n", duration);
+      executeWaterOn(duration);
+      
+      // Send ACK
+      http.end();
+      HTTPClient httpAck;
+      String ackUrl = String(serverUrl) + "/api/commands/" + String(cmdId) + "/ack";
+      Serial.println("📤 Sending ACK to: " + ackUrl);
+      
+      httpAck.begin(client, ackUrl);
+      httpAck.addHeader("X-Device-Id", String(creds.deviceId));
+      httpAck.addHeader("X-Api-Key", String(creds.apiKey));
+      int ackCode = httpAck.POST("");
+      Serial.printf("ACK Response: %d\n", ackCode);
+      httpAck.end();
+      
+      Serial.println("✅ Command ACK sent");
+    } else {
+      Serial.println("⚠️ Unknown command: " + command);
+    }
+  } else {
+    Serial.printf("❌ Command check failed (code %d)\n", code);
   }
   
   http.end();

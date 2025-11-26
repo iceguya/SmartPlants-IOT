@@ -64,10 +64,16 @@ class DashboardController extends Controller
 
         $duration = $validated['duration_sec'] ?? 5;
 
-        Command::create([
+        $cmd = Command::create([
             'device_id' => $device->id,
             'command' => 'water_on',
             'params' => ['duration_sec' => $duration],
+        ]);
+
+        \Log::info('Water command created from dashboard', [
+            'device_id' => $device->id,
+            'command_id' => $cmd->id,
+            'duration' => $duration
         ]);
 
         return back()->with('status', "Watering command sent ({$duration}s)");
