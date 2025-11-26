@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
     $middleware->alias([
         'device.key' => \App\Http\Middleware\DeviceApiKey::class,
+        'device.ownership' => \App\Http\Middleware\ValidateDeviceOwnership::class,
     ]);
 })
 

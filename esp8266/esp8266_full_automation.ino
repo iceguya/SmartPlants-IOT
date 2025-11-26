@@ -1,6 +1,7 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <DHT.h>
@@ -23,8 +24,8 @@ DHT dht(DHTPIN, DHTTYPE);
 // ===== WiFi & Server =====
 const char* ssid = "pedal";
 const char* password = "12345689";
-const char* serverUrl = "http://192.168.137.1:8000";
-const char* provisionToken = "zsDX4SgsW80UHzgJONXVn7m2gpPT347bDmoL";
+const char* serverUrl = "https://kurokana.alwaysdata.net";  // HTTPS, no trailing slash!
+const char* provisionToken = "ub78Nc5t9gt4iYWJDF922gtRqM4ER7lVN7BP";
 
 // ===== EEPROM Credentials =====
 struct Credentials {
@@ -38,8 +39,15 @@ Credentials creds;
 // ===== Timing =====
 unsigned long lastSensorRead = 0;
 unsigned long lastCommandCheck = 0;
+unsigned long lastStatusUpdate = 0;
 const unsigned long SENSOR_INTERVAL = 30000;  // 30 seconds
 const unsigned long COMMAND_INTERVAL = 10000; // 10 seconds
+const unsigned long STATUS_INTERVAL = 60000;  // 60 seconds - update device status
+
+// ===== Auto Water Configuration =====
+const float SOIL_THRESHOLD = 35.0;  // Auto water jika soil < 35%
+const int AUTO_WATER_DURATION = 10; // Auto water selama 10 detik
+bool autoWaterEnabled = false;     // Auto water dimatikan by default
 
 // ===== Helper EEPROM =====
 void saveCredentials() {
@@ -67,7 +75,9 @@ void loadCredentials() {
 
 // ===== Provisioning =====
 bool doProvisioning() {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();  // Skip SSL certificate verification
+  
   HTTPClient http;
   String url = String(serverUrl) + "/api/provision/claim";
 
@@ -141,9 +151,40 @@ void readColorRGB(float &r, float &g, float &b) {
   b = 255.0 * (1.0 - (float)blue / 1000.0);
 }
 
+// ===== Update Device Status =====
+void updateDeviceStatus() {
+  WiFiClientSecure client;
+  client.setInsecure();
+  
+  HTTPClient http;
+  String url = String(serverUrl) + "/api/ingest";  // Using ingest endpoint to update last_seen
+  
+  http.begin(client, url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-Device-Id", String(creds.deviceId));
+  http.addHeader("X-Api-Key", String(creds.apiKey));
+  
+  // Send minimal data to update device status
+  DynamicJsonDocument doc(128);
+  JsonArray readings = doc.createNestedArray("readings");
+  
+  String body;
+  serializeJson(doc, body);
+  
+  int code = http.POST(body);
+  if (code == 200) {
+    Serial.println("✅ Device status updated");
+  } else {
+    Serial.printf("⚠️ Status update failed (code %d)\n", code);
+  }
+  http.end();
+}
+
 // ===== Kirim Data =====
 bool sendSensorData(float soil, float temp, float hum, float r, float g, float b) {
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();  // Skip SSL certificate verification
+  
   HTTPClient http;
   String url = String(serverUrl) + "/api/ingest";
 
@@ -196,7 +237,9 @@ void executeWaterOn(int durationSec) {
 void checkCommands() {
   Serial.println("🔍 Checking for commands...");
   
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();  // Skip SSL certificate verification
+  
   HTTPClient http;
   String url = String(serverUrl) + "/api/commands/next";
 
@@ -234,7 +277,7 @@ void checkCommands() {
 
     if (command == "water_on") {
       int duration = params["duration_sec"] | 5; // Default 5 detik
-      Serial.printf("💧 Executing water_on for %d seconds...\n", duration);
+      Serial.printf("💧 MANUAL: Executing water_on for %d seconds...\n", duration);
       executeWaterOn(duration);
       
       // Send ACK
@@ -251,6 +294,32 @@ void checkCommands() {
       httpAck.end();
       
       Serial.println("✅ Command ACK sent");
+    } else if (command == "auto_water_enable") {
+      autoWaterEnabled = true;
+      Serial.println("✅ AUTO WATER ENABLED");
+      
+      // Send ACK
+      http.end();
+      HTTPClient httpAck;
+      String ackUrl = String(serverUrl) + "/api/commands/" + String(cmdId) + "/ack";
+      httpAck.begin(client, ackUrl);
+      httpAck.addHeader("X-Device-Id", String(creds.deviceId));
+      httpAck.addHeader("X-Api-Key", String(creds.apiKey));
+      httpAck.POST("");
+      httpAck.end();
+    } else if (command == "auto_water_disable") {
+      autoWaterEnabled = false;
+      Serial.println("⏸️ AUTO WATER DISABLED");
+      
+      // Send ACK
+      http.end();
+      HTTPClient httpAck;
+      String ackUrl = String(serverUrl) + "/api/commands/" + String(cmdId) + "/ack";
+      httpAck.begin(client, ackUrl);
+      httpAck.addHeader("X-Device-Id", String(creds.deviceId));
+      httpAck.addHeader("X-Api-Key", String(creds.apiKey));
+      httpAck.POST("");
+      httpAck.end();
     } else {
       Serial.println("⚠️ Unknown command: " + command);
     }
@@ -307,8 +376,14 @@ void setup() {
     }
   }
 
+  // Initial status update to appear in connected devices
+  Serial.println("📡 Sending initial status update...");
+  updateDeviceStatus();
+  
   Serial.println("✅ Device ready!");
   Serial.println("🔁 Automation mode enabled");
+  Serial.printf("⚙️ Auto water: %s (threshold: %.1f%%)\n", 
+                autoWaterEnabled ? "ENABLED" : "DISABLED", SOIL_THRESHOLD);
 }
 
 // ===== Loop =====
@@ -331,7 +406,19 @@ void loop() {
     }
 
     Serial.println("\n📊 Sensor Data:");
-    Serial.printf("Soil: %.2f%%\n", soil);
+    Serial.printf("Soil: %.2f%%", soil);
+    
+    // Check auto water condition
+    if (autoWaterEnabled && soil < SOIL_THRESHOLD) {
+      Serial.printf(" ⚠️ LOW! (threshold: %.1f%%)\n", SOIL_THRESHOLD);
+      Serial.printf("🤖 AUTO WATER TRIGGERED!\n");
+      executeWaterOn(AUTO_WATER_DURATION);
+    } else if (autoWaterEnabled) {
+      Serial.printf(" ✅ OK (auto water enabled, threshold: %.1f%%)\n", SOIL_THRESHOLD);
+    } else {
+      Serial.println(" (auto water disabled)");
+    }
+    
     Serial.printf("Temp: %.2f°C\n", temp);
     Serial.printf("Hum : %.2f%%\n", hum);
     Serial.printf("RGB : (%.0f, %.0f, %.0f)\n", r, g, b);
@@ -343,6 +430,12 @@ void loop() {
   if (now - lastCommandCheck >= COMMAND_INTERVAL) {
     lastCommandCheck = now;
     checkCommands();
+  }
+
+  // Update device status every 60 seconds to appear as online
+  if (now - lastStatusUpdate >= STATUS_INTERVAL) {
+    lastStatusUpdate = now;
+    updateDeviceStatus();
   }
 
   delay(100); // Small delay to prevent watchdog reset

@@ -18,20 +18,37 @@ class DeviceIngestController extends Controller
 
     public function store(Request $request)
     {
+        // Device object is attached by ValidateDeviceOwnership middleware
         $device = $request->attributes->get('device');
+        
+        // Additional safety check (should never happen with middleware)
+        if (!$device) {
+            \Log::error('Ingest request missing device from middleware');
+            return response()->json([
+                'message' => 'Device validation failed',
+                'error' => 'MIDDLEWARE_ERROR',
+            ], 500);
+        }
+
+        // Verify device ownership (double-check for security)
+        if ($device->isOrphaned()) {
+            \Log::warning('Attempted data ingestion from orphaned device', [
+                'device_id' => $device->id,
+            ]);
+            
+            return response()->json([
+                'message' => 'Device has no owner',
+                'error' => 'ORPHANED_DEVICE',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'readings' => 'required|array|min:1',
             'readings.*.type' => 'required|in:soil,temp,hum,color_r,color_g,color_b',
             'readings.*.value' => 'required|numeric',
-            // Accept optional timestamp from ESP8266. If provided, must be ISO 8601 format.
-            // Validation interprets incoming timestamp in app timezone (Asia/Jakarta).
-            // If not provided, server's current time (now() in Asia/Jakarta) will be used.
-            'timestamp' => 'nullable|date|after_or_equal:-1 hour', // Max 1 hour old
+            'timestamp' => 'nullable|date|after_or_equal:-1 hour',
         ]);
 
-        // Fallback to server's current time in Asia/Jakarta if ESP8266 doesn't send timestamp
-        // This ensures all sensor data is recorded with WIB (UTC+7) timestamps
         $timestamp = $validated['timestamp'] ?? now();
         
         // Get existing sensors efficiently
