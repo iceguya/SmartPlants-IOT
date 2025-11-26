@@ -1,6 +1,83 @@
 # 🌱 SmartPlants-IOT
 
-Sistem monitoring dan otomasi tanaman pintar berbasis IoT menggunakan ESP8266 dan Laravel. Proyek ini memungkinkan Anda untuk memantau kondisi tanaman secara real-time dan mengontrol sistem penyiraman secara otomatis atau manual melalui dashboard web.
+Sistem monitoring dan otomasi tanaman pintar berbasis IoT menggunakan ESP8266 dan Laravel.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone & Install
+git clone https://github.com/kurokana/SmartPlants-IOT.git
+cd SmartPlants-IOT
+composer install
+npm install
+
+# 2. Setup Environment
+cp .env.example .env
+php artisan key:generate
+
+# 3. Configure Database (.env)
+DB_CONNECTION=pgsql
+DB_DATABASE=your_database
+
+# 4. Migrate (Auto-handles everything!)
+php artisan migrate
+
+# 5. Start Server
+php artisan serve
+```
+
+**That's it!** ✅ System ready to use.
+
+📖 **Detailed Setup:** See [SETUP.md](SETUP.md)
+
+---
+
+## ✨ Features
+
+### 🎯 Core Features
+- ✅ **User-Scoped Devices** - No conflicts between users
+- ✅ **Auto-Provisioning** - ESP8266 auto-registers with token
+- ✅ **Real-time Monitoring** - Soil, temperature, humidity, RGB color
+- ✅ **Auto Watering** - Threshold-based automatic watering
+- ✅ **Manual Control** - Dashboard control for water pump
+- ✅ **Multi-Device** - Manage multiple ESP8266 devices
+- ✅ **Ownership Protection** - Devices isolated per user
+
+### 🔐 Security
+- ✅ API key authentication
+- ✅ Device ownership validation
+- ✅ User-scoped namespaces
+- ✅ Automatic conflict prevention
+- ✅ Comprehensive audit logs
+
+---
+
+## 🏗️ Architecture
+
+```
+ESP8266 (Chip ID: 62563)
+    ↓
+Provision with Token (user_id=1)
+    ↓
+Server: Generate "user_1_chip_62563"
+    ↓
+Device saved with unique ID
+    ↓
+Send sensor data every 30s
+    ↓
+Dashboard shows device for User 1 only
+```
+
+**Device ID Format:** `user_{user_id}_chip_{chip_id}`
+
+**Benefits:**
+- Same ESP8266 can be used by different users
+- No device ID conflicts
+- Automatic namespace isolation
+
+---
 
 ## 📋 Daftar Isi
 
