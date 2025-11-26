@@ -60,6 +60,9 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Set MySQL session timezone to Asia/Jakarta to match Laravel app timezone
+                // This ensures NOW(), CURRENT_TIMESTAMP() in raw SQL match PHP's now()
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+07:00'",
             ]) : [],
         ],
 
@@ -80,6 +83,8 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // Set MariaDB session timezone to Asia/Jakarta to match Laravel app timezone
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone='+07:00'",
             ]) : [],
         ],
 
