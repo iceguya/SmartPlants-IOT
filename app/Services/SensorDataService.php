@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class SensorDataService
@@ -115,7 +116,7 @@ class SensorDataService
     /**
      * Get grouping key based on interval
      */
-    private function getGroupKey(Carbon $timestamp, string $interval): string
+    private function getGroupKey(CarbonInterface $timestamp, string $interval): string
     {
         return match($interval) {
             'minute' => $timestamp->format('Y-m-d H:i'),
