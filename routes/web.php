@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // NOTIFICATION SYSTEM
     Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])
+            ->name('index');
         Route::get('/unread', [NotificationController::class, 'unread'])
             ->name('unread');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])
