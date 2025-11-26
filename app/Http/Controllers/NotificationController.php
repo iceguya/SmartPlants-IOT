@@ -79,15 +79,24 @@ class NotificationController extends Controller
     }
 
     /**
-     * Get all notifications (for a dedicated notifications page if needed)
+     * Display the full Notification Center page
+     * 
+     * Shows paginated list of all notifications (read and unread)
+     * with visual distinction and filtering capabilities
      */
     public function index(Request $request)
     {
         $user = Auth::user();
         
-        $notifications = $user->notifications()->paginate(20);
+        // Get notifications with pagination (10 per page)
+        $notifications = $user->notifications()
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+        
+        // Get unread count for header display
+        $unreadCount = $user->unreadNotifications()->count();
 
-        return view('notifications.index', compact('notifications'));
+        return view('notifications.index', compact('notifications', 'unreadCount'));
     }
 
     /**

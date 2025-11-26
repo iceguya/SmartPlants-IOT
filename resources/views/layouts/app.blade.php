@@ -159,10 +159,26 @@
                         <span class="font-medium">Plant Health</span>
                     </a>
 
-                    <!-- Devices Section -->
+                    <!-- Alerts & Settings Section -->
                     <div class="pt-4 pb-2">
-                        <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Device Management</p>
+                        <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Alerts & Settings</p>
                     </div>
+
+                    <a href="{{ route('notifications.index') }}" 
+                       class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 {{ request()->routeIs('notifications.index') ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50' }}"
+                       @click="sidebarOpen = false"
+                       x-data="notificationCenter()">
+                        <div class="relative">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span x-show="unreadCount > 0" 
+                                  class="absolute -top-1 -left-1 flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-red-500 rounded-full"
+                                  x-text="unreadCount > 9 ? '9+' : unreadCount"
+                                  x-cloak></span>
+                        </div>
+                        <span class="font-medium">Notifications</span>
+                    </a>
 
                     <a href="{{ route('provisioning.index') }}" 
                        class="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 {{ request()->routeIs('provisioning.index') ? 'bg-brand-50 text-brand-700 shadow-sm' : 'text-gray-700 hover:bg-gray-50' }}"
@@ -294,7 +310,7 @@
 
                                     <!-- Dropdown Footer -->
                                     <div class="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                                        <a href="#" class="text-xs text-brand-600 hover:text-brand-700 font-medium">
+                                        <a href="{{ route('notifications.index') }}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">
                                             View all notifications →
                                         </a>
                                     </div>
