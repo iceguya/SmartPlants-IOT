@@ -283,7 +283,15 @@ void checkCommands() {
     Serial.printf("📥 Command received: %s (ID: %d)\n", command.c_str(), cmdId);
 
     if (command == "water_on") {
-      int duration = params["duration_sec"] | 5; // Default 5 detik
+      // ✅ FIX: Gunakan .as<int>() dengan default value yang benar
+      int duration = params["duration_sec"].as<int>();
+      if (duration == 0) duration = 5; // Default 5 detik jika tidak ada parameter
+      
+      // Debug: Print parameter JSON
+      Serial.print("📋 Params: ");
+      serializeJson(params, Serial);
+      Serial.println();
+      
       Serial.printf("💧 MANUAL: Executing water_on for %d seconds...\n", duration);
       executeWaterOn(duration);
       
